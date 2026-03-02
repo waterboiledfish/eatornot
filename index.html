@@ -1381,37 +1381,15 @@
             window.addEventListener('resize', checkMobile);
         }
 
-        // 检查登录状态 - 验证token
+        // 检查登录状态 - 简化版
         function checkLoginStatus() {
             const savedUser = localStorage.getItem('chilema_user');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
-                
-                // 验证token是否有效
-                if (user.token) {
-                    fetch('/api/verify-token', {
-                        headers: { 'Authorization': user.token }
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            currentUser = user;
-                            showPage('home');
-                            loadUserData();
-                        } else {
-                            // token无效，清除并显示登录页
-                            localStorage.removeItem('chilema_user');
-                            showPage('login');
-                        }
-                    })
-                    .catch(() => {
-                        // 网络错误，显示登录页
-                        showPage('login');
-                    });
-                } else {
-                    // 没有token（旧格式数据），清除并显示登录页
-                    localStorage.removeItem('chilema_user');
-                    showPage('login');
+                if (user.email) {
+                    currentUser = user;
+                    showPage('home');
+                    loadUserData();
                 }
             }
         }
@@ -1473,24 +1451,21 @@
             });
         }
 
-        // 处理登录 - 使用后端API
+        // 处理登录 - 简化版
         function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            // 简单验证
             if (!email || !password) {
                 showError('login-error', '请输入邮箱和密码');
                 return;
             }
 
-            // 显示加载
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.textContent = '登录中...';
 
-            // 调用后端登录API
             fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1498,30 +1473,27 @@
             })
             .then(res => res.json())
             .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+                
                 if (data.success) {
-                    // 保存token和用户信息
-                    currentUser = { email: email, token: data.token };
+                    currentUser = { email: email };
                     localStorage.setItem('chilema_user', JSON.stringify(currentUser));
-                    
-                    // 获取健康数据
-                    fetchHealthData(data.token);
-                    
                     showPage('home');
-                    showToast('登录成功！欢迎回来', 'success');
+                    loadUserData();
+                    showToast('登录成功！', 'success');
                 } else {
                     showError('login-error', data.error || '登录失败');
                 }
             })
             .catch(err => {
-                showError('login-error', '登录失败，请稍后重试');
-            })
-            .finally(() => {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '登录';
+                showError('login-error', '登录失败，请稍后重试');
             });
         }
 
-        // 处理注册 - 使用后端API
+        // 处理注册 - 简化版
         function handleRegister(e) {
             e.preventDefault();
             const email = document.getElementById('register-email').value;
@@ -1538,12 +1510,10 @@
                 return;
             }
 
-            // 显示加载
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.textContent = '注册中...';
 
-            // 调用后端注册API
             fetch('/api/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1551,59 +1521,39 @@
             })
             .then(res => res.json())
             .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+                
                 if (data.success) {
-                    // 保存token和用户信息
-                    currentUser = { email: email, token: data.token };
+                    currentUser = { email: email };
                     localStorage.setItem('chilema_user', JSON.stringify(currentUser));
-                    
                     showPage('home');
-                    showToast('注册成功！请完善您的健康档案', 'success');
+                    showToast('注册成功！', 'success');
                 } else {
                     showError('register-error', data.error || '注册失败');
                 }
             })
             .catch(err => {
-                showError('register-error', '注册失败，请稍后重试');
-            })
-            .finally(() => {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '注册';
+                showError('register-error', '注册失败，请稍后重试');
             });
-        }
-
-        // 从后端获取健康数据
-        function fetchHealthData(token) {
-            fetch('/api/get-health-data', {
-                headers: { 'Authorization': token }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data) {
-                    userProfile = data;
-                    updateUserAvatar();
-                    updateTodayOverview();
-                    loadProfileToForm();
-                }
-            })
-            .catch(err => console.log('获取健康数据失败'));
-        }
-
-        // 退出登录
-        function logout() {
-            currentUser = null;
-            userProfile = null;
-            uploadedImage = null;
-            historyRecords = [];
-            localStorage.removeItem('chilema_user');
-            showPage('login');
-            showToast('已退出登录', 'success');
         }
 
         // 加载用户数据
         function loadUserData() {
-            if (currentUser && currentUser.token) {
-                // 有token，从后端获取数据
-                fetchHealthData(currentUser.token);
+            if (currentUser && currentUser.email) {
+                fetch('/api/get-health-data?username=' + encodeURIComponent(currentUser.email))
+                .then(res => res.json())
+                .then(data => {
+                    if (data) {
+                        userProfile = data;
+                        updateUserAvatar();
+                        updateTodayOverview();
+                        loadProfileToForm();
+                    }
+                })
+                .catch(err => console.log('获取数据失败'));
             }
         }
         }
@@ -2145,7 +2095,7 @@
             }
         }
 
-        // 保存档案 - 使用后端API
+        // 保存档案 - 简化版
         function saveProfile() {
             const age = document.getElementById('profile-age').value;
             const gender = document.getElementById('profile-gender').value;
@@ -2160,20 +2110,34 @@
             userProfile = { age, gender, height, weight, allergies, conditions };
 
             // 保存到后端
-            if (currentUser && currentUser.token) {
+            if (currentUser && currentUser.email) {
                 fetch('/api/save-health-data', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': currentUser.token
-                    },
-                    body: JSON.stringify(userProfile)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: currentUser.email, ...userProfile })
                 })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
                         showToast('健康档案保存成功！', 'success');
                     }
+                })
+                .catch(err => {
+                    showToast('保存失败', 'error');
+                });
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            currentUser = null;
+            userProfile = null;
+            uploadedImage = null;
+            historyRecords = [];
+            localStorage.removeItem('chilema_user');
+            showPage('login');
+            showToast('已退出登录', 'success');
+        }
                 })
                 .catch(err => {
                     showToast('保存失败', 'error');
