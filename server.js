@@ -17,6 +17,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
+// 注册 - 支持 /api/register 和 /api/signUp
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -29,7 +30,29 @@ app.post('/api/register', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/signUp', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.json({ error: '请输入用户名和密码', success: false });
+    }
+    if (users.has(username)) {
+        return res.json({ error: '用户名已存在', success: false });
+    }
+    users.set(username, { password, healthData: {} });
+    res.json({ success: true });
+});
+
+// 登录 - 支持 /api/login 和 /api/signIn
 app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const user = users.get(username);
+    if (!user || user.password !== password) {
+        return res.json({ error: '用户名或密码错误', success: false });
+    }
+    res.json({ success: true, username });
+});
+
+app.post('/api/signIn', (req, res) => {
     const { username, password } = req.body;
     const user = users.get(username);
     if (!user || user.password !== password) {
